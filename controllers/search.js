@@ -130,7 +130,10 @@ class SearchController extends Telegram.TelegramBaseController {
 		} else {
 			if (episode) {
 				let episodeMenu = menu.menu.filter(m => m.id === 1*episode.id)[0];
-				menu = episodeMenu || menu;
+				if (episodeMenu) {
+					this.getWatch($, episodeMenu);
+					return;
+				}
 			}
 
 			$.runInlineMenu(menu, msg);
