@@ -6,7 +6,7 @@ module.exports = {
 	},
 	db: {
 		url: 'mongodb://localhost/',
-		db: 'test'
+		db: 'fspls_bot'
 	},
 	history_limit: 15
 };
