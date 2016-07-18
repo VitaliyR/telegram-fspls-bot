@@ -131,7 +131,8 @@ class SearchController extends Telegram.TelegramBaseController {
 			if (episode) {
 				let episodeMenu = menu.menu.filter(m => m.id === 1*episode.id)[0];
 				if (episodeMenu) {
-					this.getWatch($, episodeMenu);
+					tree.push(episodeMenu.parsedObj);
+					this.getWatch($, episodeMenu, true);
 					return;
 				}
 			}
@@ -294,12 +295,13 @@ class SearchController extends Telegram.TelegramBaseController {
 	 * Get watch link & save the data and displays the menu
 	 * @param $
 	 * @param menu
+	 * @param silent
 	 * @returns {Promise|Promise.<TResult>|*}
    */
-	getWatch($, menu) {
-		return this.getWatchLinks(menu)
-			.then(menu => this.saveMovie.apply(this, [$]))
-			.then(() => $.runInlineMenu(menu, $.userSession.msg));
+	getWatch($, menu, silent) {
+		let data = this.getWatchLinks(menu);
+		!silent && data.then(menu => this.saveMovie.apply(this, [$]));
+		return data.then(() => $.runInlineMenu(menu, $.userSession.msg));
 	}
 
 	/**
