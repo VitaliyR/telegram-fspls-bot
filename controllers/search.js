@@ -265,8 +265,18 @@ class SearchController extends Telegram.TelegramBaseController {
 		$.sendMessage(msg);
 	}
 
+	/**
+	 * Switches episode
+	 *
+	 * @param {Telegram.Scope} $
+	 * @param menuOpts
+	 * @param ep
+	 * @param {Telegram.CallbackQuery} cb
+	 * @fixme if no episode found
+   */
 	switchEpisode($, menuOpts, ep, cb) {
 		$.api.answerCallbackQuery(cb.id);
+
 		let tree = $.userSession.tree;
 
 		// handling back button when no episode passed
@@ -278,7 +288,7 @@ class SearchController extends Telegram.TelegramBaseController {
 
 		let menu = menuOpts.menu.filter(m => m.id === ep);
 
-		if (menu) {
+		if (menu.length) {
 			menu = menu[0];
 
 			if (tree.last.type === 'episode') {
