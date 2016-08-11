@@ -247,6 +247,9 @@ class SearchController extends Telegram.TelegramBaseController {
 		return Promise.all(urlsData.map(d => this.connector.getLink(d.url))).then(links => {
 			urlsData.forEach((d, i) => (d.url = links[i]) && (d.cdnLink = true));
 			return obj;
+		}).catch(e => {
+			console.log(`Failed to get movie ${obj.message}`);
+			obj.message += ' (Issues with getting movie)';
 		});
 	}
 
