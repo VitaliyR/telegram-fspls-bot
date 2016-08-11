@@ -8,5 +8,5 @@ module.exports = {
 		url: 'mongodb://localhost/',
 		db: 'fspls_bot'
 	},
-	history_limit: 15
+	history_limit: 20
 };
