@@ -1,8 +1,11 @@
 'use strict';
 
 const Telegram = require('telegram-node-bot');
-
 const config = require('./config');
+const Logger = require('./lib/logger')();
+
+const logger = new Logger(config.log);
+
 const PersistentLayer = require('./lib/persistent');
 const Persistent = new PersistentLayer(config);
 
@@ -12,7 +15,7 @@ const NewsController = require('./controllers/news');
 const HelpController = require('./controllers/help');
 const SearchController = require('./controllers/search');
 
-const tg = new Telegram.Telegram(process.env.TELEGRAM_FSPLS_BOT_TOKEN || config.key);
+const tg = new Telegram.Telegram(process.env.TELEGRAM_FSPLS_BOT_TOKEN || config.key, logger);
 tg.addScopeExtension(PersistentWrapper(Persistent));
 
 const searchController = new SearchController(config);
@@ -37,4 +40,4 @@ tg.router
 	.when('/news', new NewsController(config))
 	.otherwise(searchController);
 
-console.log('Started');
+logger.info('Started');
