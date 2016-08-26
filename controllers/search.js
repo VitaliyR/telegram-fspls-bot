@@ -70,8 +70,26 @@ class SearchController extends Telegram.TelegramBaseController {
 			});
 	}
 
+  /**
+   * Gets folder information
+   * @type {Telegram.Scope} $
+   * @type {number} [folder=0] zero means root
+   */
 	getFolder($, folder = 0) {
-		return this.getData($, $.userSession.movie, folder);
+		var data = this.getData($, $.userSession.movie, folder);
+
+    if (!folder) {
+      // if its root and smth is blocked
+      data.then((parsedObj) => {
+        if (parsedObj.hasBlocked) {
+
+        }
+        
+        return parsedObj;
+      });
+    }
+
+    return data;
 	}
 
 	selectFolder($, parsedObj) {
