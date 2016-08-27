@@ -40,4 +40,25 @@ tg.router
 	.when('/news', new NewsController(config))
 	.otherwise(searchController);
 
+/**
+ * Handles process shutdown
+ *
+ * @param {Boolean} silent
+ * @param  {Error} err
+ */
+var exitHandler = function(silent, err) {
+	if (!silent) {
+		logger.info('Shutdown');
+	}
+	if (err) {
+		logger.error(err.message);
+		logger.error(err.stack);
+	}
+	process.exit();
+};
+
+process.on('exit', exitHandler.bind(null, false));
+process.on('SIGINT', exitHandler.bind(null, true));
+process.on('uncaughtException', exitHandler.bind(null, true));
+
 logger.info('Started');
