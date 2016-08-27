@@ -3,6 +3,7 @@ const Telegram = require('telegram-node-bot');
 const API = require('../lib/api');
 const Parser = require('../lib/parser');
 
+const logger = require('../lib/logger')();
 const fsClasses = require('../lib/fs-classes');
 const HistoryTree = require('../lib/history-tree');
 
@@ -55,6 +56,17 @@ class SearchController extends Telegram.TelegramBaseController {
 	getData($, movie, folder) {
 		return this.connector.getSeries(movie, folder)
 			.then(res => Parser.parse(res, folder))
+      .then(parsedRes => {
+        // if smth is blocked
+        if (parsedRes.hasBlocked) {
+          logger.log('Blocked movie found:', movie.title);
+
+          this.connector.getData(movie.link).then(data => {
+          });
+        }
+
+        return parsedRes;
+      })
 			.then(parsedRes => {
 				const tree = $.userSession.tree;
 
@@ -76,20 +88,7 @@ class SearchController extends Telegram.TelegramBaseController {
    * @type {number} [folder=0] zero means root
    */
 	getFolder($, folder = 0) {
-		var data = this.getData($, $.userSession.movie, folder);
-
-    if (!folder) {
-      // if its root and smth is blocked
-      data.then((parsedObj) => {
-        if (parsedObj.hasBlocked) {
-
-        }
-        
-        return parsedObj;
-      });
-    }
-
-    return data;
+		return this.getData($, $.userSession.movie, folder);
 	}
 
 	selectFolder($, parsedObj) {

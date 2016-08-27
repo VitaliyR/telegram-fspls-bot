@@ -11,6 +11,7 @@
   "dependencies": {
     "cheerio": "^0.20.0",
     "loggy": "^0.3.5",
+    "minimist": "^1.2.0",
     "mongoose": "^4.5.3",
     "request-promise": "^3.0.0",
     "telegram-node-bot": "^3.0.10"

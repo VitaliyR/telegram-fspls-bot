@@ -2,9 +2,33 @@
 
 const Telegram = require('telegram-node-bot');
 const config = require('./config');
-const Logger = require('./lib/logger')();
+const args = require('minimist')(process.argv.slice(2));
+const logger = require('./lib/logger')(config.log);
 
-const logger = new Logger(config.log);
+/**
+ * Handles process shutdown
+ *
+ * @param {Boolean} silent
+ * @param  {Error} err
+ */
+var exitHandler = function(silent, err) {
+	if (!silent) {
+		logger.info('Shutdown');
+	}
+	if (err) {
+		logger.error(err.stack);
+	}
+	process.exit();
+};
+
+process.on('exit', exitHandler.bind(null, false));
+process.on('SIGINT', exitHandler.bind(null, true));
+process.on('uncaughtException', exitHandler.bind(null, true));
+
+const bot_key = process.env.TELEGRAM_FSPLS_BOT_TOKEN || args.key || config.key;
+if (!bot_key) {
+	throw new Error('Bot key is not provided');
+}
 
 const PersistentLayer = require('./lib/persistent');
 const Persistent = new PersistentLayer(config);
@@ -15,7 +39,7 @@ const NewsController = require('./controllers/news');
 const HelpController = require('./controllers/help');
 const SearchController = require('./controllers/search');
 
-const tg = new Telegram.Telegram(process.env.TELEGRAM_FSPLS_BOT_TOKEN || config.key, logger);
+const tg = new Telegram.Telegram(bot_key, logger);
 tg.addScopeExtension(PersistentWrapper(Persistent));
 
 const searchController = new SearchController(config);
@@ -39,26 +63,5 @@ tg.router
 	.when([{ name: 'Help', test: checker(/\help$/)}, '/start'] , new HelpController(config))
 	.when('/news', new NewsController(config))
 	.otherwise(searchController);
-
-/**
- * Handles process shutdown
- *
- * @param {Boolean} silent
- * @param  {Error} err
- */
-var exitHandler = function(silent, err) {
-	if (!silent) {
-		logger.info('Shutdown');
-	}
-	if (err) {
-		logger.error(err.message);
-		logger.error(err.stack);
-	}
-	process.exit();
-};
-
-process.on('exit', exitHandler.bind(null, false));
-process.on('SIGINT', exitHandler.bind(null, true));
-process.on('uncaughtException', exitHandler.bind(null, true));
 
 logger.info('Started');
