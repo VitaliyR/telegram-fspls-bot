@@ -60,9 +60,7 @@ class SearchController extends Telegram.TelegramBaseController {
         // if smth is blocked
         if (parsedRes.hasBlocked) {
           logger.log('Blocked movie found:', movie.title);
-
-          this.connector.getData(movie.link).then(data => {
-          });
+          return this.connector.getData(movie.link).then(data => Parser.parseActions(data));
         }
 
         return parsedRes;
