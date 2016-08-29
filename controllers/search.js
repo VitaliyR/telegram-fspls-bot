@@ -65,19 +65,44 @@ class SearchController extends Telegram.TelegramBaseController {
 
         return parsedRes;
       })
-			.then(parsedRes => {
-				const tree = $.userSession.tree;
+			.then(parsedRes => this.buildClass($, movie, folder, parsedRes));
+	}
 
-				parsedRes.id = folder;
-				let className = parsedRes.type[0].toUpperCase() + parsedRes.type.substr(1);
+	buildClass($, movie, folder, parsedRes) {
+		const tree = $.userSession.tree;
 
-				if (tree.length && tree.last.childType === 'season') {
-					className = 'Season';
-					parsedRes.number = tree.last.data.filter(d => d.folder === folder)[0].number;
-				}
+		if (!parsedRes.id) {
+			parsedRes.id = folder;
+		}
 
-				return new fsClasses[className](parsedRes);
-			});
+		let className = parsedRes.type[0].toUpperCase() + parsedRes.type.substr(1);
+
+		if (tree.length && tree.last.childType === 'season') {
+			className = 'Season';
+			if (!parsedRes.number) {
+				parsedRes.number = tree.last.data.filter(d => d.folder === folder)[0].number;
+			}
+		}
+
+		return new fsClasses[className](parsedRes);
+	}
+
+	/**
+	 * Gets folder via actions parser
+	 * @param $
+	 * @param parsedObj
+	 * @param currentObj
+	 * @returns {Promise.<*>}
+	 */
+	getActionData($, parsedObj, currentObj) {
+		const movie = $.userSession.movie;
+
+		if (currentObj.data && currentObj.data.length) {
+			return Promise.resolve(this.buildClass($, movie, currentObj.id, currentObj));
+		} else {
+			// todo params for getData?
+			return this.connector.getData(movie.link, 'dvdrip' ).then(this.buildClass($, movie, ));
+		}
 	}
 
   /**
@@ -112,7 +137,10 @@ class SearchController extends Telegram.TelegramBaseController {
 				break;
 			case 'folder':
 			case 'season':
-				this.getFolder($, button.folder).then(parsedObj => this.selectFolder($, parsedObj));
+				var retriever = parsedObj.isBlocked
+					? this.getActionData($, parsedObj, button)
+					: this.getFolder($, button.folder);
+				retriever.then(parsedObj => this.selectFolder($, parsedObj));
 				break;
 			default:
 				throw new Error('Error parsing new folder');
@@ -184,7 +212,7 @@ class SearchController extends Telegram.TelegramBaseController {
 			case 'season':
 				parsedObj.data.forEach(data => {
 					let button = {
-						text: data.text,
+						text: '' + data.text,
 						callback: this.buttonClick.bind(this, $, parsedObj, data)
 					};
 					menuOpts.menu.push(button);
