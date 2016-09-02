@@ -7,6 +7,7 @@ const logger = require('../lib/logger')();
 const fsClasses = require('../lib/fs-classes');
 const HistoryTree = require('../lib/history-tree');
 
+const utils = require('../lib/utils');
 
 class SearchController extends Telegram.TelegramBaseController {
 
@@ -54,33 +55,35 @@ class SearchController extends Telegram.TelegramBaseController {
 	}
 
 	getData($, movie, folder) {
-		return this.connector.getSeries(movie, folder)
-			.then(res => Parser.parse(res, folder))
+		const folderId = folder.id ? folder.id : folder;
+		return this.connector.getSeries(movie, folderId)
+			.then(res => Parser.parse(res))
       .then(parsedRes => {
         // if smth is blocked
         if (parsedRes.hasBlocked) {
           logger.log('Blocked movie found:', movie.title);
-          return this.connector.getData(movie.link).then(data => Parser.parseActions(data));
+					const qs = folder.params || {};
+          return this.connector.getData(movie.link, qs).then(data => Parser.parseActions(data));
         }
 
         return parsedRes;
       })
-			.then(parsedRes => this.buildClass($, movie, folder, parsedRes));
+			.then(parsedRes => this.buildClass($, movie, folderId, parsedRes));
 	}
 
-	buildClass($, movie, folder, parsedRes) {
+	buildClass($, movie, folderId, parsedRes) {
 		const tree = $.userSession.tree;
 
-		if (!parsedRes.id) {
-			parsedRes.id = folder;
+		if (typeof parsedRes.id === 'undefined') {
+			parsedRes.id = folderId;
 		}
 
 		let className = parsedRes.type[0].toUpperCase() + parsedRes.type.substr(1);
 
 		if (tree.length && tree.last.childType === 'season') {
 			className = 'Season';
-			if (!parsedRes.number) {
-				parsedRes.number = tree.last.data.filter(d => d.folder === folder)[0].number;
+			if (typeof parsedRes.number === 'undefined') {
+				parsedRes.number = tree.last.data.filter(d => d.folder === folderId)[0].number;
 			}
 		}
 
@@ -100,15 +103,30 @@ class SearchController extends Telegram.TelegramBaseController {
 		if (currentObj.data && currentObj.data.length) {
 			return Promise.resolve(this.buildClass($, movie, currentObj.id, currentObj));
 		} else {
-			// todo params for getData?
-			return this.connector.getData(movie.link, 'dvdrip' ).then(this.buildClass($, movie, ));
+			const nodePos = parsedObj.data.indexOf(currentObj);
+
+			return this.connector.getData(movie.link, currentObj.params)
+				.then(data => Parser.parseActions(data))
+				.then(parsedRes => {
+					var newNode = utils.findOneNode(parsedRes, 'id', currentObj.id);
+					if (!newNode) {
+						throw new Error(`New node not found, weird: ${movie.title} ${currentObj.id}`);
+					}
+
+					return newNode;
+				})
+				.then(parsedRes => this.buildClass($, movie, currentObj.id, parsedRes))
+				.then(parsedClass => {
+					parsedObj.data[nodePos] = parsedClass;
+					return parsedClass;
+				});
 		}
 	}
 
   /**
    * Gets folder information
    * @type {Telegram.Scope} $
-   * @type {number} [folder=0] zero means root
+   * @type {Object|number} [folder=0] zero means root
    */
 	getFolder($, folder = 0) {
 		return this.getData($, $.userSession.movie, folder);
@@ -150,11 +168,14 @@ class SearchController extends Telegram.TelegramBaseController {
 
 	backAction($) {
 		let tree = $.userSession.tree;
-		tree.pop();
+		const isBlocked = tree.last.isBlocked;
 
+		let currentNode = tree.pop();
 		let menuNode = tree.pop();
-		if (!menuNode.data || !menuNode.data.length) {
-			this.getFolder($, menuNode.id).then(parsedObj => this.selectFolder($, parsedObj));
+
+		if (!menuNode.menu.length) {
+			let retriever = isBlocked ? this.getActionData($, currentNode, menuNode) : this.getFolder($, menuNode.id);
+			retriever.then(parsedObj => this.selectFolder($, parsedObj));
 		} else {
 			this.selectFolder($, menuNode);
 		}
@@ -372,12 +393,12 @@ class SearchController extends Telegram.TelegramBaseController {
 
 	/**
 	 * Rollback from string history tree
-	 * @param $
-	 * @param movie
-	 * @param msg
+	 * @param {Scope} $
+	 * @param {Object} movie
+	 * @param {Message} msg
    */
 	roll($, movie, msg) {
-		const tree = new HistoryTree(movie.last_folders);
+		let tree = new HistoryTree(movie.last_folders);
 		this.selectMovie($, movie, msg, tree);
 
 		let episodeNode = tree.pop();
@@ -390,7 +411,41 @@ class SearchController extends Telegram.TelegramBaseController {
 			episodeNode = null;
 		}
 
-		this.getFolder($, folderNode.id).then(parsedObj => this.selectWatch($, parsedObj, episodeNode));
+		let params = folderNode.params = {
+			translation: folderNode.id.split('translation')[0]
+		};
+		tree.forEach(t => {
+			if (t.type === 'season') {
+				params.season = t.id.split('season')[0];
+			} else {
+				let id = '' + t.id;
+
+				if (id.indexOf('language') > 0) {
+					params.language = id.split('language')[0];
+				}
+			}
+		});
+
+		this.getFolder($, folderNode)
+			.then(parsedObj => {
+				if (parsedObj.isBlocked) {
+					tree.rebuild(leaf => {
+						let node = utils.findOneNode(parsedObj, 'id', leaf.id);
+
+						if (!(node instanceof fsClasses.ParsedNode)) {
+							node = this.buildClass($, movie, node.id, node);
+						}
+
+						return node;
+					}, this);
+
+					let node = utils.findOneNode(parsedObj, 'id', folderNode.id);
+					return this.getActionData($, parsedObj, node);
+				} else {
+					return parsedObj;
+				}
+			})
+			.then(parsedObj => this.selectWatch($, parsedObj, episodeNode));
 	}
 
 }
