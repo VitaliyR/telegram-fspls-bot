@@ -29,15 +29,24 @@ class SearchController extends Telegram.TelegramBaseController {
 
 			let menuOpts = {
 				method: 'sendMessage',
+				message: 'Found',
 				params: ['*Found:*', { parse_mode: 'Markdown' }],
 				menu: []
 			};
 
 			res.forEach((movie) => menuOpts.menu.push({
-				text: movie.title,
+				text: Parser.parseSearchMovieTitle(movie),
 				callback: (cb, msg) => {
 					$.api.answerCallbackQuery(cb.id);
 					this.selectMovie($, movie, msg);
+
+					// keep search results in history
+					$.userSession.tree.push(
+						new fsClasses.SearchResult({
+							menu: menuOpts,
+						})
+					);
+
 					this.getFolder($).then(parsedObj => this.selectFolder($, parsedObj));
 				}
 			}));
@@ -65,6 +74,14 @@ class SearchController extends Telegram.TelegramBaseController {
 					const qs = folder.params || {};
           return this.connector.getData(movie.link, qs).then(data => Parser.parseActions(data));
         }
+
+        // wip! FIXME:
+        // let q = this.buildClass($, movie, folderId, parsedRes);
+        if (folder instanceof fsClasses.ParsedNode) {
+					folder.data = parsedRes.data;
+					folder.childType = parsedRes.childType;
+					return folder;
+				}
 
         return parsedRes;
       })
@@ -140,7 +157,12 @@ class SearchController extends Telegram.TelegramBaseController {
 
 		$.userSession.tree.push(parsedObj);
 
-		const menu = parsedObj.menu.length ? parsedObj.menu : this.getMenu($, parsedObj);
+		const menu = parsedObj.menu ? parsedObj.menu : this.getMenu($, parsedObj);
+
+		// Fix for current framework ver
+		if (!menu.params || menu.params.length > 1) {
+			menu.params = [msg];
+		}
 
 		$.runInlineMenu(menu, msg);
 	}
@@ -173,8 +195,8 @@ class SearchController extends Telegram.TelegramBaseController {
 		let currentNode = tree.pop();
 		let menuNode = tree.pop();
 
-		if (!menuNode.menu.length) {
-			let retriever = isBlocked ? this.getActionData($, currentNode, menuNode) : this.getFolder($, menuNode.id);
+		if (!menuNode.menu) {
+			let retriever = isBlocked ? this.getActionData($, currentNode, menuNode) : this.getFolder($, menuNode.id); // fixme: need to remove this iud
 			retriever.then(parsedObj => this.selectFolder($, parsedObj));
 		} else {
 			this.selectFolder($, menuNode);
@@ -187,7 +209,7 @@ class SearchController extends Telegram.TelegramBaseController {
 
 		tree.push(parsedObj);
 
-		let menu = parsedObj.menu.length ? parsedObj.menu : this.getMenu($, parsedObj);
+		let menu = parsedObj.menu ? parsedObj.menu : this.getMenu($, parsedObj);
 
 		if (parsedObj.childType === 'watch') {
 			this.getWatch($, menu);
@@ -206,11 +228,9 @@ class SearchController extends Telegram.TelegramBaseController {
 	}
 
 	getMenu($, parsedObj) {
-		const msg = $.userSession.msg;
-
 		let menuOpts = {
 			method: 'sendMessage',
-			params: [msg],
+			params: [$.userSession.msg],
 			menu: [],
 			message: this.getTitle($)
 		};
@@ -218,9 +238,9 @@ class SearchController extends Telegram.TelegramBaseController {
 		parsedObj.hasBlocked && (menuOpts.message += ' (some data is blocked)');
 
 		// back button
-		if ($.userSession.tree.length > 1) {
+		if ($.userSession.tree.length) {
 			menuOpts.menu.push({
-				text: 'Back',
+				text: '∆ Back ∆',
 				callback: (cb) => {
 					$.api.answerCallbackQuery(cb.id);
 					this.backAction($);
@@ -259,7 +279,7 @@ class SearchController extends Telegram.TelegramBaseController {
 
 					// back button
 					button.menu.push({
-						text: 'Back',
+						text: '∆ Back ∆',
 						callback: this.switchEpisode.bind(this, $, menuOpts, null)
 					});
 
@@ -339,11 +359,8 @@ class SearchController extends Telegram.TelegramBaseController {
 	 * @param menuOpts
 	 * @param ep
 	 * @param {Telegram.CallbackQuery} cb
-	 * @fixme if no episode found
    */
 	switchEpisode($, menuOpts, ep, cb) {
-		$.api.answerCallbackQuery(cb.id);
-
 		let tree = $.userSession.tree;
 
 		// handling back button when no episode passed
@@ -356,6 +373,8 @@ class SearchController extends Telegram.TelegramBaseController {
 		let menu = menuOpts.menu.filter(m => m.id === ep);
 
 		if (menu.length) {
+			$.api.answerCallbackQuery(cb.id);
+
 			menu = menu[0];
 
 			if (tree.last.type === 'episode') {
@@ -365,6 +384,10 @@ class SearchController extends Telegram.TelegramBaseController {
 			}
 
 			this.getWatch($, menu);
+		} else {
+			$.api.answerCallbackQuery(cb.id, {
+				text: 'Can\'t go further'
+			});
 		}
 	}
 
@@ -373,7 +396,7 @@ class SearchController extends Telegram.TelegramBaseController {
 	 * @param $
 	 * @param menu
 	 * @param silent
-	 * @returns {Promise|Promise.<TResult>|*}
+	 * @returns {Promise|*}
    */
 	getWatch($, menu, silent) {
 		let data = this.getWatchLinks(menu);
