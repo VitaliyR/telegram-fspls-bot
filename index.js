@@ -68,7 +68,7 @@ const checker = (command) => {
  */
 tg.router
   .when({ name: 'History', test: checker(/\h$/) }, historyController)
-	.when([{ name: 'Help', test: checker(/\help(@.+)$/)}, '/start'] , new HelpController(config))
+	.when([{ name: 'Help', test: checker(/\help(@.+)*$/)}, '/start'] , new HelpController(config))
 	.when('/news', new NewsController(config))
 	.when('/search :request', searchController)
 	.otherwise(searchController);
