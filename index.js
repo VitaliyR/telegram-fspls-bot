@@ -38,6 +38,7 @@ const HistoryController = require('./controllers/history');
 const NewsController = require('./controllers/news');
 const HelpController = require('./controllers/help');
 const SearchController = require('./controllers/search');
+const InlineController = require('./controllers/inline');
 
 const tg = new Telegram.Telegram(bot_key, logger);
 tg.addScopeExtension(PersistentWrapper(Persistent));
@@ -71,6 +72,7 @@ tg.router
 	.when([{ name: 'Help', test: checker(/\help(@.+)*$/)}, '/start'] , new HelpController(config))
 	.when('/news', new NewsController(config))
 	.when('/search :request', searchController)
-	.otherwise(searchController);
+	.otherwise(searchController)
+	.inlineQuery(new InlineController(config));
 
 logger.info('Started');
