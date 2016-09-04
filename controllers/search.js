@@ -22,7 +22,11 @@ class SearchController extends Telegram.TelegramBaseController {
 	 * @param $ ctx
 	 */
 	handle($) {
-		const query = $.message.text;
+		if ($.message.chat.type === 'group') return;
+
+		const query = $.query.request || $.message.text;
+
+		if (!query) return;
 
 		this.connector.search(query).then((res) => {
 			if (!res.length) throw new Error();
@@ -64,7 +68,7 @@ class SearchController extends Telegram.TelegramBaseController {
 	}
 
 	getData($, movie, folder) {
-		const folderId = folder.id ? folder.id : folder;
+		const folderId = typeof folder.id !== 'undefined' ? folder.id : folder;
 		return this.connector.getSeries(movie, folderId)
 			.then(res => Parser.parse(res))
       .then(parsedRes => {
@@ -75,8 +79,6 @@ class SearchController extends Telegram.TelegramBaseController {
           return this.connector.getData(movie.link, qs).then(data => Parser.parseActions(data));
         }
 
-        // wip! FIXME:
-        // let q = this.buildClass($, movie, folderId, parsedRes);
         if (folder instanceof fsClasses.ParsedNode) {
 					folder.data = parsedRes.data;
 					folder.childType = parsedRes.childType;
@@ -196,7 +198,7 @@ class SearchController extends Telegram.TelegramBaseController {
 		let menuNode = tree.pop();
 
 		if (!menuNode.menu) {
-			let retriever = isBlocked ? this.getActionData($, currentNode, menuNode) : this.getFolder($, menuNode.id); // fixme: need to remove this iud
+			let retriever = isBlocked ? this.getActionData($, currentNode, menuNode) : this.getFolder($, menuNode);
 			retriever.then(parsedObj => this.selectFolder($, parsedObj));
 		} else {
 			this.selectFolder($, menuNode);
@@ -238,7 +240,7 @@ class SearchController extends Telegram.TelegramBaseController {
 		parsedObj.hasBlocked && (menuOpts.message += ' (some data is blocked)');
 
 		// back button
-		if ($.userSession.tree.length) {
+		if ($.userSession.tree.length > 1) {
 			menuOpts.menu.push({
 				text: '∆ Back ∆',
 				callback: (cb) => {
@@ -308,7 +310,7 @@ class SearchController extends Telegram.TelegramBaseController {
 	getWatchButtons($, data) {
 		let res = [];
 
-		data.forEach((d, i) => {
+		data.forEach(d => {
 			let button = Object.assign({}, d);
 			let linkButton = {
 				text: 'Link',

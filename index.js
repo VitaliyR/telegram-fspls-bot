@@ -53,15 +53,24 @@ historyController.searchDelegate = searchController.roll.bind(searchController);
  */
 const checker = (command) => {
 	return (message) => {
+		if (!message.text) return false;
 		let test = message.text.match(command);
 		return test ? !!test.length : false;
 	};
 };
 
+/**
+ * Routes
+ * /h private
+ * /start public
+ * /news public
+ * /search private-inline
+ */
 tg.router
   .when({ name: 'History', test: checker(/\h$/) }, historyController)
-	.when([{ name: 'Help', test: checker(/\help$/)}, '/start'] , new HelpController(config))
+	.when([{ name: 'Help', test: checker(/\help(@.+)$/)}, '/start'] , new HelpController(config))
 	.when('/news', new NewsController(config))
+	.when('/search :request', searchController)
 	.otherwise(searchController);
 
 logger.info('Started');
