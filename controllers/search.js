@@ -484,7 +484,7 @@ class SearchController extends Telegram.TelegramBaseController {
       retriever = this.connector.getData(link).then(parsedObj => {
         movie = {
           title: parsedObj.coverData.title,
-          link: parsedObj.actionsData.pageBaseUrl
+          link: parsedObj.actionsData.pageBaseUrl.replace('/view', '')
         };
 
         return movie;
