@@ -3,7 +3,7 @@ const Utils = require('./lib/utils');
 const PersistentLayer = require('./lib/persistent');
 const PersistentWrapper = require('./lib/persistent-wrapper');
 
-const api = require('./lib/api');
+const api = require('./lib/api')();
 
 const Controllers = {
   History: require('./controllers/history'),

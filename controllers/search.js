@@ -41,7 +41,7 @@ class SearchController extends Telegram.TelegramBaseController {
         callback: (cb, msg) => {
           $.api.answerCallbackQuery(cb.id);
           this.rollMovie($, movie, msg).then(() => {
-            $.userSession.tree.push(
+            $.userSession.tree.prepend(
               new fsClasses.SearchResult({
                 menu: menuOpts
               })
@@ -336,7 +336,7 @@ class SearchController extends Telegram.TelegramBaseController {
     return Promise.all(urlsData.map(d => this.connector.getLink(d.url))).then(links => {
       urlsData.forEach((d, i) => (d.url = links[i]) && (d.cdnLink = true));
       return obj;
-    }).catch(e => {
+    }).catch(() => {
       console.log(`Failed to get movie ${obj.message}`);
       obj.message += ' (Issues with getting movie)';
     });

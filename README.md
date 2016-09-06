@@ -9,6 +9,11 @@ Give it a try in [Telegram (@fspls_bot)](https://telegram.me/fspls_bot).
 * **/news** - show latest bot news
 * And you can, of course, just *type* movie name for **search**
 
+Bot is useless in group chat.
+
+Also, there is a possibility to search for movies in other chats using inline mode.
+To do so, you need write to bot (@fspls_bot Movie name) in any chat.
+
 ## License
 The MIT License (MIT)
 
