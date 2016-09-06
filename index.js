@@ -31,10 +31,11 @@ if (!bot_key) {
 	throw new Error('Bot key is not provided');
 }
 
+const Utils = require('./lib/utils');
 const PersistentLayer = require('./lib/persistent');
+const PersistentWrapper = require('./lib/persistent-wrapper');
 const Persistent = new PersistentLayer(config);
 
-const PersistentWrapper = require('./lib/persistent-wrapper');
 const HistoryController = require('./controllers/history');
 const NewsController = require('./controllers/news');
 const HelpController = require('./controllers/help');
@@ -43,7 +44,7 @@ const RegisterController = require('./controllers/register');
 const InlineController = require('./controllers/inline');
 const CallbackController = require('./controllers/callback');
 
-const Utils = require('./lib/utils');
+// Scope extensions
 
 const tg = new Telegram.Telegram(bot_key, logger);
 const persistent = PersistentWrapper(Persistent);
