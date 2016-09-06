@@ -5,5 +5,6 @@ root = true
 end_of_line = lf
 
 [*.js]
-indent_style = tab
+indent_style = space
 indent_size = 2
+insert_final_newline = true
