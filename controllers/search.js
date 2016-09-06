@@ -40,13 +40,9 @@ class SearchController extends Telegram.TelegramBaseController {
         text: Parser.parseSearchMovieTitle(movie),
         callback: (cb, msg) => {
           $.api.answerCallbackQuery(cb.id);
-          this.rollMovie($, movie, msg).then(() => {
-            $.userSession.tree.prepend(
-              new fsClasses.SearchResult({
-                menu: menuOpts
-              })
-            );
-          });
+          this.rollMovie($, movie, msg, new fsClasses.SearchResult({
+            menu: menuOpts
+          }));
         }
       }));
 
@@ -476,7 +472,7 @@ class SearchController extends Telegram.TelegramBaseController {
       .then(parsedObj => this.selectWatch($, parsedObj, episodeNode));
   }
 
-  rollMovie($, movie, msg) {
+  rollMovie($, movie, msg, historyEl) {
     let retriever = Promise.resolve(movie);
 
     if (typeof movie !== 'object') {
@@ -493,6 +489,9 @@ class SearchController extends Telegram.TelegramBaseController {
 
     return retriever.then(movie => {
       this.selectMovie($, movie, msg);
+      if (historyEl) {
+        $.userSession.tree.push(historyEl);
+      }
       return this.getFolder($).then(parsedObj => this.selectFolder($, parsedObj));
     });
   }
