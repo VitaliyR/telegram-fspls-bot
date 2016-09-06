@@ -1,5 +1,9 @@
 [
   {
+    "text": "1.1.1 (05.09.2016)",
+    "desc": "Added inline mode for searching for movies. General UX fixes."
+  },
+  {
     "text": "1.1.0 (02.09.2016)",
     "desc": "This update brings possibility to watch movies which were removed due to holder rights."
   },

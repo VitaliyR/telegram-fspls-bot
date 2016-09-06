@@ -16,6 +16,7 @@ class HistoryController extends Telegram.TelegramBaseController {
 		const user = $.update.message.from;
 		$.persistent().getUser(user).then(user => {
 			let userMovies = user.movies;
+			if (!userMovies.length) { throw new Error(); }
 
 			let menuOpts = {
 				method: 'sendMessage',

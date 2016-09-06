@@ -4,6 +4,7 @@ const Telegram = require('telegram-node-bot');
 const config = require('./config');
 const args = require('minimist')(process.argv.slice(2));
 const logger = require('./lib/logger')(config.log);
+const api = require('./lib/api')(config.api);
 
 /**
  * Handles process shutdown
@@ -38,12 +39,14 @@ const HistoryController = require('./controllers/history');
 const NewsController = require('./controllers/news');
 const HelpController = require('./controllers/help');
 const SearchController = require('./controllers/search');
+const RegisterController = require('./controllers/register');
 const InlineController = require('./controllers/inline');
+const CallbackController = require('./controllers/callback');
 
 const tg = new Telegram.Telegram(bot_key, logger);
 tg.addScopeExtension(PersistentWrapper(Persistent));
 
-const searchController = new SearchController(config);
+const searchController = new SearchController(config, api);
 const historyController = new HistoryController(config);
 historyController.searchDelegate = searchController.roll.bind(searchController);
 
@@ -60,6 +63,10 @@ const checker = (command) => {
 	};
 };
 
+// tg.before((a, b, c) => {
+	// console.log(arguments);
+// });
+
 /**
  * Routes
  * /h private
@@ -70,9 +77,11 @@ const checker = (command) => {
 tg.router
   .when({ name: 'History', test: checker(/\h$/) }, historyController)
 	.when([{ name: 'Help', test: checker(/\help(@.+)*$/)}, '/start'] , new HelpController(config))
+	.when(['/start', '/stop'], new RegisterController(config))
 	.when('/news', new NewsController(config))
 	.when('/search :request', searchController)
 	.otherwise(searchController)
-	.inlineQuery(new InlineController(config));
+	.inlineQuery(new InlineController(config, api))
+	.callbackQuery(new CallbackController(config, tg._telegramDataSource._api, tg));
 
 logger.info('Started');

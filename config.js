@@ -1,4 +1,5 @@
 module.exports = {
+	bot_name: '@fspls_bot',
 	perPage: 10,
 	api: {
 		base: 'http://fs.to',

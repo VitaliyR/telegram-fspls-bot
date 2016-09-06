@@ -1,28 +1,48 @@
 const Telegram = require('telegram-node-bot');
+const TModel = Telegram.Models;
+
+const Parser = require('../lib/parser');
 
 class InlineController extends Telegram.TelegramBaseInlineQueryController {
 
-	constructor(config) {
+	constructor(config, api) {
 		super();
 		this.config = config;
+		this.connector = api;
 	}
 
 	handle($) {
 		const query = $.inlineQuery.query;
-		$.answer([
-			new Telegram.Models.InlineQueryResultVideo(
-				'video',
-				'1',
-				'http://n41.filecdn.to/TqGK/NDVmNTAxYWFjZjA3ZTkyYTY4ZjBhMWVkZDBkNTRiMGR8ZnN0b3wzMTA5NDQxNDE3fDEwMDAwfDJ8MHxlfDQxfDU0ODRiNDg4NDYzMzI1NjhiZWZjYjk0NGQ4MjlkOGRmfDB8OTpkLjIyOjl8MHw3MTY4ODEyODF8MTQ3Mjk5OTY2NS41NTk0fHZpZGVv/playvideo_64z3c3hn3fpoxkcs1jsl965j2.0.1139013157.974127405.1472938461.mp4',
-				'video/mp4',
-				'http://www.qqxxzx.com/images/pictur/pictur-13.jpg',
-				'Title'
-			)
-		])
-	}
 
-	chosenResult() {
-		console.log(arguments);
+		if (!query) return;
+
+		this.connector.search(query).then((res) => {
+			let results = [];
+
+			res.forEach(movie => {
+				movie.link = 'http://fs.to' + movie.link;
+				movie.poster = 'http:' + movie.poster;
+
+				let movieId = Parser.getMovieId(movie);
+				let cbId = 'pm_' + movieId;
+
+				results.push(new TModel.InlineQueryResultArticle(
+					'article',
+					null,
+					Parser.parseSearchMovieTitle(movie),
+					new TModel.InputTextMessageContent(movie.link),
+					new TModel.InlineKeyboardMarkup([
+						[new TModel.InlineKeyboardButton('Watch', null, cbId)]
+					]),
+					movie.link,
+					false,
+					null,
+					movie.poster
+				));
+			});
+
+			$.answer(results);
+		});
 	}
 
 }

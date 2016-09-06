@@ -1,6 +1,5 @@
 const Telegram = require('telegram-node-bot');
 
-const API = require('../lib/api');
 const Parser = require('../lib/parser');
 
 const logger = require('../lib/logger')();
@@ -11,10 +10,10 @@ const utils = require('../lib/utils');
 
 class SearchController extends Telegram.TelegramBaseController {
 
-	constructor(config) {
+	constructor(config, api) {
 		super();
 		this.config = config;
-		this.connector = new API(config.api);
+		this.connector = api;
 	}
 
 	/**
@@ -29,7 +28,7 @@ class SearchController extends Telegram.TelegramBaseController {
 		if (!query) return;
 
 		this.connector.search(query).then((res) => {
-			if (!res.length) throw new Error();
+			if (!res.length) throw new Error('Nothing found');
 
 			let menuOpts = {
 				method: 'sendMessage',
@@ -42,16 +41,13 @@ class SearchController extends Telegram.TelegramBaseController {
 				text: Parser.parseSearchMovieTitle(movie),
 				callback: (cb, msg) => {
 					$.api.answerCallbackQuery(cb.id);
-					this.selectMovie($, movie, msg);
-
-					// keep search results in history
-					$.userSession.tree.push(
-						new fsClasses.SearchResult({
-							menu: menuOpts,
-						})
-					);
-
-					this.getFolder($).then(parsedObj => this.selectFolder($, parsedObj));
+					this.rollMovie($, movie, msg).then(() => {
+						$.userSession.tree.push(
+							new fsClasses.SearchResult({
+								menu: menuOpts
+							})
+						);
+					});
 				}
 			}));
 
@@ -76,9 +72,16 @@ class SearchController extends Telegram.TelegramBaseController {
         if (parsedRes.hasBlocked) {
           logger.log('Blocked movie found:', movie.title);
 					const qs = folder.params || {};
-          return this.connector.getData(movie.link, qs).then(data => Parser.parseActions(data));
+
+					// try to parse with new parser (json actions based)
+          return this.connector.getData(movie.link, qs).then(data => Parser.parseActions(data)).catch(e => {
+          	logger.error('Problems of parsing actions for:', movie.title);
+						logger.error(e);
+						return parsedRes; // return to prev folder parser
+					});
         }
 
+        // if we passed already folder - just
         if (folder instanceof fsClasses.ParsedNode) {
 					folder.data = parsedRes.data;
 					folder.childType = parsedRes.childType;
@@ -91,6 +94,8 @@ class SearchController extends Telegram.TelegramBaseController {
 	}
 
 	buildClass($, movie, folderId, parsedRes) {
+		if (parsedRes instanceof fsClasses.ParsedNode) return parsedRes;
+
 		const tree = $.userSession.tree;
 
 		if (typeof parsedRes.id === 'undefined') {
@@ -166,7 +171,7 @@ class SearchController extends Telegram.TelegramBaseController {
 			menu.params = [msg];
 		}
 
-		$.runInlineMenu(menu, msg);
+		return this.runInlineMenu($, menu);
 	}
 
 	buttonClick($, parsedObj, button, cb) {
@@ -471,6 +476,44 @@ class SearchController extends Telegram.TelegramBaseController {
 				}
 			})
 			.then(parsedObj => this.selectWatch($, parsedObj, episodeNode));
+	}
+
+	rollMovie($, movie, msg) {
+		let retriever = Promise.resolve(movie);
+
+		if (typeof movie !== 'object') {
+			let link = '/video/films/' + movie + '.html';
+			retriever = this.connector.getData(link).then(parsedObj => {
+				movie = {
+					title: parsedObj.coverData.title,
+					link: parsedObj.actionsData.pageBaseUrl
+				};
+
+				return movie;
+			});
+		}
+
+		return retriever.then(movie => {
+			this.selectMovie($, movie, msg);
+			return this.getFolder($).then(parsedObj => this.selectFolder($, parsedObj));
+		});
+	}
+
+	runInlineMenu($, menu) {
+		let msg = $.userSession.msg;
+
+		if (!msg) {
+			menu.params = [menu.message];
+			menu.menu.forEach(m => {
+				let origCallback = m.callback;
+				m.callback = function(cb, msg) {
+					$.userSession.msg = msg;
+					origCallback(cb, msg);
+				}
+			});
+		}
+
+		return $.runInlineMenu(menu, msg);
 	}
 
 }
