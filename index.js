@@ -3,6 +3,7 @@
 const Telegram = require('telegram-node-bot');
 const config = require('./config');
 const args = require('minimist')(process.argv.slice(2));
+
 const logger = require('./lib/logger')(config.log);
 const api = require('./lib/api')(config.api);
 
@@ -31,58 +32,7 @@ if (!bot_key) {
 	throw new Error('Bot key is not provided');
 }
 
-const Utils = require('./lib/utils');
-const PersistentLayer = require('./lib/persistent');
-const PersistentWrapper = require('./lib/persistent-wrapper');
-const Persistent = new PersistentLayer(config);
-
-const HistoryController = require('./controllers/history');
-const NewsController = require('./controllers/news');
-const HelpController = require('./controllers/help');
-const SearchController = require('./controllers/search');
-const RegisterController = require('./controllers/register');
-const InlineController = require('./controllers/inline');
-const CallbackController = require('./controllers/callback');
-
-// Scope extensions
-
 const tg = new Telegram.Telegram(bot_key, logger);
-const persistent = PersistentWrapper(Persistent);
-tg.addScopeExtension(persistent);
-tg.addScopeExtension(Utils);
-
-const searchController = new SearchController(config, api);
-const historyController = new HistoryController(config);
-historyController.searchDelegate = searchController.roll.bind(searchController);
-
-/**
- * Checks
- * @param command
- * @returns {function(*)}
- */
-const checker = (command) => {
-	return (message) => {
-		if (!message.text) return false;
-		let test = message.text.match(command);
-		return test ? !!test.length : false;
-	};
-};
-
-/**
- * Routes
- * /h private
- * /start public
- * /news public
- * /search private-inline
- */
-tg.router
-  .when({ name: 'History', test: checker(/\h$/) }, historyController)
-	.when([{ name: 'Help', test: checker(/\help(@.+)*$/)}, '/start'] , new HelpController(config))
-	.when(['/start', '/stop'], new RegisterController(config))
-	.when('/news', new NewsController(config))
-	.when('/search :request', searchController)
-	.otherwise(searchController)
-	.inlineQuery(new InlineController(config, persistent, api))
-	.callbackQuery(new CallbackController(config, tg._telegramDataSource._api, tg));
+require('./router')(tg, config);
 
 logger.info('Started');
