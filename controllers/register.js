@@ -12,16 +12,12 @@ class RegisterController extends Telegram.TelegramBaseController {
 
 	register($) {
 		const user = $.update.message.from;
-		$.persistent().getUser(user).then(usr => {
-			if (!usr) {
-				$.persistent().createUser(user).catch(e => logger.error(e));
-			}
-		}).catch(e => logger.error(e));
+		$.persistent().enableUser(user).catch(e => logger.error(e));
 	}
 
 	unregister($) {
 		const user = $.update.message.from;
-		$.persistent().removeUser(user).catch(e => logger.error(e));
+		$.persistent().disableUser(user).catch(e => logger.error(e));
 	}
 
 }

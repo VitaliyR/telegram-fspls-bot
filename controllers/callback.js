@@ -3,11 +3,11 @@ const logger = require('../lib/logger')();
 
 class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
 
-	constructor(config, tgapi) {
+	constructor(config, tgapi, tg) {
 		super();
 		this.config = config;
 		this.api = tgapi;
-		this.test = arguments[2]; // fixme: remove
+		this.tg = tg;
 	}
 
 	handle(cb) {
@@ -42,7 +42,7 @@ class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
 				)
 			)
 		);
-		let processor = this.test._updateProcessor._processorForUpdate(update);
+		let processor = this.tg._updateProcessor._processorForUpdate(update);
 
 		processor._getSession(update.message).then(session => {
 			let scope = new Telegram.Scope(
@@ -57,12 +57,18 @@ class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
 				processor._dataSource.logger
 			);
 
-			scope.persistent().getUser(cb.from).then((user) => {
-				if (!user) { throw new Error(); }
+			scope.persistent().isActive(cb.from).then((isActive) => {
+				if (!isActive) throw new Error('Not active');
+
 				this.api.answerCallbackQuery(cb.id);
 				let controller = processor._dataSource.router.controllersForUpdate(update)[0];
-				controller.rollMovie(scope, movieId)
-			}).catch(() => {
+
+				return controller.rollMovie(scope, movieId);
+			}).catch(e => {
+				if (e.code === 403) {
+					scope.persistent().disableUser(cb.from);
+				}
+
 				this.api.answerCallbackQuery(cb.id, { text: 'You need to add bot firstly. Add it via ' + this.config.bot_name });
 			});
 		}).catch(e => {

@@ -43,8 +43,12 @@ const RegisterController = require('./controllers/register');
 const InlineController = require('./controllers/inline');
 const CallbackController = require('./controllers/callback');
 
+const Utils = require('./lib/utils');
+
 const tg = new Telegram.Telegram(bot_key, logger);
-tg.addScopeExtension(PersistentWrapper(Persistent));
+const persistent = PersistentWrapper(Persistent);
+tg.addScopeExtension(persistent);
+tg.addScopeExtension(Utils);
 
 const searchController = new SearchController(config, api);
 const historyController = new HistoryController(config);
@@ -63,10 +67,6 @@ const checker = (command) => {
 	};
 };
 
-// tg.before((a, b, c) => {
-	// console.log(arguments);
-// });
-
 /**
  * Routes
  * /h private
@@ -81,7 +81,7 @@ tg.router
 	.when('/news', new NewsController(config))
 	.when('/search :request', searchController)
 	.otherwise(searchController)
-	.inlineQuery(new InlineController(config, api))
+	.inlineQuery(new InlineController(config, persistent, api))
 	.callbackQuery(new CallbackController(config, tg._telegramDataSource._api, tg));
 
 logger.info('Started');

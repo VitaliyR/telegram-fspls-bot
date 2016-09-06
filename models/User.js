@@ -3,6 +3,7 @@ const Schema = mongoose.Schema;
 
 const userSchema = new Schema({
 		id: { type: Number, required: true, unique: true },
+		disabled: { type: Boolean, default: false },
 		first_name: { type: String, required: true },
 		last_name: String,
 		username: String,

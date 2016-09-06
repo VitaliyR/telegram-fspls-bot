@@ -6,7 +6,6 @@ const logger = require('../lib/logger')();
 const fsClasses = require('../lib/fs-classes');
 const HistoryTree = require('../lib/history-tree');
 
-const utils = require('../lib/utils');
 
 class SearchController extends Telegram.TelegramBaseController {
 
@@ -132,7 +131,7 @@ class SearchController extends Telegram.TelegramBaseController {
 			return this.connector.getData(movie.link, currentObj.params)
 				.then(data => Parser.parseActions(data))
 				.then(parsedRes => {
-					var newNode = utils.findOneNode(parsedRes, 'id', currentObj.id);
+					var newNode = $.utils().findOneNode(parsedRes, 'id', currentObj.id);
 					if (!newNode) {
 						throw new Error(`New node not found, weird: ${movie.title} ${currentObj.id}`);
 					}
@@ -460,7 +459,7 @@ class SearchController extends Telegram.TelegramBaseController {
 			.then(parsedObj => {
 				if (parsedObj.isBlocked) {
 					tree.rebuild(leaf => {
-						let node = utils.findOneNode(parsedObj, 'id', leaf.id);
+						let node = $.utils().findOneNode(parsedObj, 'id', leaf.id);
 
 						if (!(node instanceof fsClasses.ParsedNode)) {
 							node = this.buildClass($, movie, node.id, node);
@@ -469,7 +468,7 @@ class SearchController extends Telegram.TelegramBaseController {
 						return node;
 					}, this);
 
-					let node = utils.findOneNode(parsedObj, 'id', folderNode.id);
+					let node = $.utils().findOneNode(parsedObj, 'id', folderNode.id);
 					return this.getActionData($, parsedObj, node);
 				} else {
 					return parsedObj;
@@ -513,7 +512,7 @@ class SearchController extends Telegram.TelegramBaseController {
 			});
 		}
 
-		return $.runInlineMenu(menu, msg);
+		return $.utils().runInlineMenu($, menu, msg);
 	}
 
 }
