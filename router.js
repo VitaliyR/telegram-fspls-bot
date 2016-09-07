@@ -1,7 +1,5 @@
 const Utils = require('./lib/utils');
-
-const PersistentLayer = require('./lib/persistent');
-const PersistentWrapper = require('./lib/persistent-wrapper');
+const Persistent = require('./lib/persistent');
 
 const api = require('./lib/api')();
 
@@ -34,9 +32,10 @@ const checkRoute = (command) => {
  * @param {Object} config
  */
 module.exports = function(tg, config) {
-  const persistent = PersistentWrapper(new PersistentLayer(config));
+  Utils.setTg(tg);
+  Persistent.connect(config);
 
-  tg.addScopeExtension(persistent);
+  tg.addScopeExtension(Persistent);
   tg.addScopeExtension(Utils);
 
   const searchController = new Controllers.Search(config, api);
@@ -57,6 +56,6 @@ module.exports = function(tg, config) {
     .when('/news', new Controllers.News(config))
     .when('/search :request', searchController)
     .otherwise(searchController)
-    .inlineQuery(new Controllers.Inline(config, persistent, api))
+    .inlineQuery(new Controllers.Inline(config, Persistent, api))
     .callbackQuery(new Controllers.Callback(config, tg._telegramDataSource._api, tg));
 };

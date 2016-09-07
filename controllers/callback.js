@@ -1,6 +1,8 @@
 const Telegram = require('telegram-node-bot');
 const logger = require('../lib/logger')();
 
+const utils = require('../lib/utils').Utils;
+
 class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
 
   constructor(config, tgapi, tg) {
@@ -30,45 +32,18 @@ class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
    * @param cb
    */
   handlePM(movieId, cb) {
-    let update = new Telegram.Models.Update(
-      Date.now(),
-      new Telegram.Models.Message(
-        Date.now(),
-        cb.from,
-        Date.now(),
-        new Telegram.Models.Chat(
-          cb.from.id,
-          'private'
-        )
-      )
-    );
-    let processor = this.tg._updateProcessor._processorForUpdate(update);
-
-    processor._getSession(update.message).then(session => {
-      let scope = new Telegram.Scope(
-        update,
-        processor._dataSource.router.queryForUpdate(update),
-        processor._dataSource.api,
-        processor._dataSource.scopeExtensions,
-        processor._waitingRequests,
-        processor._waitingCallbackQueries,
-        session.chatSession,
-        session.userSession,
-        processor._dataSource.logger
-      );
-
+    utils.getScopeFromCallback(cb).then(scope => {
       scope.persistent().isActive(cb.from).then((isActive) => {
         if (!isActive) throw new Error('Not active');
 
-        this.api.answerCallbackQuery(cb.id);
-        let controller = processor._dataSource.router.controllersForUpdate(update)[0];
+        let controller = this.tg._telegramDataSource.router.controllersForUpdate(scope.update)[0];
 
+        this.api.answerCallbackQuery(cb.id);
         return controller.rollMovie(scope, movieId);
       }).catch(e => {
         if (e.code === 403) {
           scope.persistent().disableUser(cb.from);
         }
-
         this.api.answerCallbackQuery(cb.id, { text: 'You need to add bot firstly. Add it via ' + this.config.bot_name });
       });
     }).catch(e => {

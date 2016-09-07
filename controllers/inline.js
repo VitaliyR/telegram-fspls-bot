@@ -9,7 +9,7 @@ class InlineController extends Telegram.TelegramBaseInlineQueryController {
     super();
     this.config = config;
     this.connector = api;
-    this.persistent = new Persistent().process();
+    this.persistent = Persistent;
   }
 
   handle($) {
