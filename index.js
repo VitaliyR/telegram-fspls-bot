@@ -32,7 +32,8 @@ if (!botKey) {
   throw new Error('Bot key is not provided');
 }
 
-const tg = new Telegram.Telegram(botKey, logger);
+const localizations = [ require('./data/i18n/en.json') ];
+const tg = new Telegram.Telegram(botKey, logger, null, localizations);
 require('./router')(tg, config);
 
 logger.info('Started');

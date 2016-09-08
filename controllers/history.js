@@ -3,10 +3,26 @@ const HistoryTree = require('../lib/history-tree');
 
 class HistoryController extends Telegram.TelegramBaseController {
 
+  /**
+   * Get default localization
+   * @returns {*}
+   */
+  get texts() {
+    return this._localization[this.config.i18nDefault];
+  }
+
+  /**
+   * Sets searchDelegate
+   * @param {SearchController.<Function>} delegate
+   */
   set searchDelegate(delegate) {
     this._delegate = delegate;
   }
 
+  /**
+   * @constructor
+   * @param {Object} config
+   */
   constructor(config) {
     super();
     this.config = config;
@@ -14,6 +30,7 @@ class HistoryController extends Telegram.TelegramBaseController {
 
   handle($) {
     const user = $.update.message.from;
+
     $.persistent().getUser(user).then(user => {
       let userMovies = user.movies;
       if (!userMovies.length) {
@@ -22,7 +39,7 @@ class HistoryController extends Telegram.TelegramBaseController {
 
       let menuOpts = {
         method: 'sendMessage',
-        params: [`*You've stopped at:*`, { parse_mode: 'Markdown' }],
+        params: [`*${this.texts.historyAt}:*`, { parse_mode: 'Markdown' }],
         menu: []
       };
 
@@ -40,7 +57,7 @@ class HistoryController extends Telegram.TelegramBaseController {
 
       $.runInlineMenu(menuOpts);
     }).catch(() => {
-      $.sendMessage(`You haven't watch anything yet`);
+      $.sendMessage(this.texts.noHistory);
     });
   }
 

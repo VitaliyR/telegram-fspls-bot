@@ -39,7 +39,7 @@ class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
         let controller = this.tg._telegramDataSource.router.controllersForUpdate(scope.update)[0];
 
         this.api.answerCallbackQuery(cb.id);
-        return controller.rollMovie(scope, movieId);
+        return controller.selectMovie(scope, movieId);
       }).catch(e => {
         if (e.code === 403) {
           scope.persistent().disableUser(cb.from);
@@ -47,7 +47,11 @@ class CallbackController extends Telegram.TelegramBaseCallbackQueryController {
         this.api.answerCallbackQuery(cb.id, { text: 'You need to add bot firstly. Add it via ' + this.config.bot_name });
       });
     }).catch(e => {
-      logger.error(e);
+      if (typeof e === 'string') {
+        // todo
+      } else {
+        logger.error(e);
+      }
     });
   }
 

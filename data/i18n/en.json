@@ -1,0 +1,14 @@
+{
+  "lang": "en",
+  "phrases": {
+    "foundMovies": "Found:",
+    "blocked": "(some data is blocked)",
+    "issuesGettingMovie": "Issues with getting movie",
+    "cantGoFurther": "Can't go further",
+    "historyAt": "You've stopped at",
+    "noHistory": "You haven't watch anything yet",
+    "errors": {
+      "notFound": "Nothing found"
+    }
+  }
+}
