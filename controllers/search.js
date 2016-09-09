@@ -256,7 +256,7 @@ class SearchController extends Telegram.TelegramBaseController {
     }
   }
 
-  selectWatch($, parsedObj, episode) {
+  selectWatch($, parsedObj) {
     let tree = $.userSession.tree;
 
     tree.push(parsedObj);
@@ -266,6 +266,7 @@ class SearchController extends Telegram.TelegramBaseController {
     if (parsedObj.childType === 'watch') {
       this.getWatch($, menu);
     } else {
+      let episode = parsedObj.selectedEpisode;
       if (episode) {
         let episodeMenu = menu.menu.filter(m => m.id === 1 * episode.id)[0];
         if (episodeMenu) {
@@ -321,16 +322,6 @@ class SearchController extends Telegram.TelegramBaseController {
 
         parsedObj.data.forEach(data => {
           let button = {
-            text: '' + data.id,
-            id: data.id,
-            layout: [1, 2].concat(Array(Math.ceil(data.data.length / 2)).fill(2)),
-            message: `${this.getTitle($)}e${data.id}`,
-            menu: [],
-            parsedObj: new fsClasses.Episode(data),
-            callback: this.switchEpisode.bind(this, $, menuOpts, data.id)
-          };
-
-          button = {
             id: data.id,
             text: '' + data.id,
             layout: [1, 2].concat(Array(Math.ceil(data.data.length / 2)).fill(2)),
@@ -412,7 +403,6 @@ class SearchController extends Telegram.TelegramBaseController {
    * @param menuOpts
    * @param ep
    * @param {Telegram.CallbackQuery} cb
-   * @fixme refactor?
    */
   switchEpisode($, menuOpts, ep, cb) {
     let tree = $.userSession.tree;
@@ -420,7 +410,7 @@ class SearchController extends Telegram.TelegramBaseController {
     // handling back button when no episode passed
     if (!ep) {
       tree.pop();
-      return this.runInlineMenu($, menuOpts) && false;
+       return this.runInlineMenu($, menuOpts) && false;
     }
 
     let menu = menuOpts.menu.filter(m => m.id === ep);
@@ -479,6 +469,7 @@ class SearchController extends Telegram.TelegramBaseController {
 
     if (episodeNode.type === 'episode') {
       folderNode = tree.pop();
+      folderNode.selectedEpisode = episodeNode;
     } else {
       folderNode = episodeNode;
       episodeNode = null;
@@ -502,27 +493,6 @@ class SearchController extends Telegram.TelegramBaseController {
     });
 
     return this.selectMovie($, movie, msg, tree, folderNode);
-
-    this.getFolder($, folderNode)
-      .then(parsedObj => {
-        if (parsedObj.isBlocked) {
-          tree.rebuild(leaf => {
-            let node = $.utils().findOneNode(parsedObj, 'id', leaf.id);
-
-            if (!(node instanceof fsClasses.ParsedNode)) {
-              node = this.buildClass($, node.id, node);
-            }
-
-            return node;
-          }, this);
-
-          let node = $.utils().findOneNode(parsedObj, 'id', folderNode.id);
-          return this.getActionData($, parsedObj, node);
-        } else {
-          return parsedObj;
-        }
-      })
-      .then(parsedObj => this.selectWatch($, parsedObj, episodeNode));
   }
 
   /**
