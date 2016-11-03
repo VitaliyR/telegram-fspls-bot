@@ -55,10 +55,8 @@ class SearchController extends Telegram.TelegramBaseController {
       res.forEach((movie) => menuOpts.menu.push({
         text: Parser.parseSearchMovieTitle(movie),
         callback: (cb, msg) => {
-          $.api.answerCallbackQuery(cb.id);
-
           let tree = new HistoryTree([ new fsClasses.SearchResult({ menu: menuOpts }) ]);
-          this.selectMovie($, movie, msg, tree);
+          this.selectMovie($, movie, msg, tree).then(() => $.api.answerCallbackQuery(cb.id));
         }
       }));
 
@@ -91,6 +89,10 @@ class SearchController extends Telegram.TelegramBaseController {
         $.userSession.tree = tree || new HistoryTree();
       })
       .then(() => this.getFolder($, folderNode))
+      .then(parsedObj => {
+        folderNode && folderNode.selectedEpisode && (parsedObj.selectedEpisode = folderNode.selectedEpisode);
+        return parsedObj;
+      })
       .then(parsedObj => this.selectFolder($, parsedObj));
   }
 
@@ -109,8 +111,8 @@ class SearchController extends Telegram.TelegramBaseController {
           // try to parse with new parser (json actions based)
           return this.connector.getData(movie.link, qs)
             .then(data => Parser.parseActions(data))
-            .catch(e => {
-              logger.error('Problems of parsing actions for:', movie.title, e);
+            .catch(() => {
+              logger.warn('Problems of parsing actions for:', movie.title);
               return parsedRes; // return to prev folder parser
             });
         }
@@ -129,6 +131,8 @@ class SearchController extends Telegram.TelegramBaseController {
         if (!parsedObj.isBlocked) return parsedObj;
 
         $.userSession.tree.rebuild(leaf => {
+          if (leaf.id === -1) return leaf;
+
           let node = $.utils().findOneNode(parsedObj, 'id', leaf.id);
 
           if (!(node instanceof fsClasses.ParsedNode)) {
@@ -179,7 +183,7 @@ class SearchController extends Telegram.TelegramBaseController {
     const movie = $.userSession.movie;
 
     if (currentObj.data && currentObj.data.length) {
-      return Promise.resolve(this.buildClass($, movie, currentObj.id, currentObj));
+      return Promise.resolve(this.buildClass($, movie, currentObj));
     } else {
       const nodePos = parsedObj.data.indexOf(currentObj);
 
@@ -222,23 +226,25 @@ class SearchController extends Telegram.TelegramBaseController {
   }
 
   buttonClick($, parsedObj, button, cb) {
-    $.api.answerCallbackQuery(cb.id);
+    let retriever;
 
     switch (parsedObj.childType) {
       case 'watch':
       case 'episode':
-        this.selectWatch($, parsedObj);
+        retriever = this.selectWatch($, parsedObj);
         break;
       case 'folder':
       case 'season':
-        var retriever = parsedObj.isBlocked
+        const dataRetriever = parsedObj.isBlocked
           ? this.getActionData($, parsedObj, button)
           : this.getFolder($, button.folder);
-        retriever.then(parsedObj => this.selectFolder($, parsedObj));
+        retriever = dataRetriever.then(parsedObj => this.selectFolder($, parsedObj));
         break;
       default:
         throw logger.error('Error parsing new folder');
     }
+
+    retriever.then((a) => $.api.answerCallbackQuery(cb.id));
   }
 
   backAction($) {
@@ -258,26 +264,28 @@ class SearchController extends Telegram.TelegramBaseController {
 
   selectWatch($, parsedObj) {
     let tree = $.userSession.tree;
+    let retriever;
 
     tree.push(parsedObj);
 
     let menu = parsedObj.menu ? parsedObj.menu : this.getMenu($, parsedObj);
 
     if (parsedObj.childType === 'watch') {
-      this.getWatch($, menu);
+      retriever = this.getWatch($, menu);
     } else {
       let episode = parsedObj.selectedEpisode;
       if (episode) {
         let episodeMenu = menu.menu.filter(m => m.id === 1 * episode.id)[0];
         if (episodeMenu) {
           tree.push(episodeMenu.parsedObj);
-          this.getWatch($, episodeMenu, true);
-          return;
+          return this.getWatch($, episodeMenu, true);
         }
       }
 
-      this.runInlineMenu($, menu);
+      retriever = this.runInlineMenu($, menu);
     }
+
+    return retriever;
   }
 
   getMenu($, parsedObj) {
@@ -321,14 +329,15 @@ class SearchController extends Telegram.TelegramBaseController {
         menuOpts.layout = [1].concat(Array(Math.ceil(parsedObj.data.length / 4)).fill(4));
 
         parsedObj.data.forEach(data => {
+          let episode = new fsClasses.Episode(data);
           let button = {
             id: data.id,
             text: '' + data.id,
             layout: [1, 2].concat(Array(Math.ceil(data.data.length / 2)).fill(2)),
-            parsedObj: new fsClasses.Episode(data),
+            parsedObj: episode,
             callback: this.switchEpisode.bind(this, $, menuOpts, data.id),
             method: 'sendMessage',
-            params: [`${this.getTitle($)}e${data.id}`, { parse_mode: 'Markdown' }],
+            params: [`${this.getTitle($)}e${episode.numberString}`, { parse_mode: 'Markdown' }],
             menu: []
           };
 
@@ -382,14 +391,33 @@ class SearchController extends Telegram.TelegramBaseController {
 
   getWatchLinks(obj) {
     let urlsData = obj.menu.filter(d => d.url && !d.cdnLink);
+    let issue = false;
 
-    return Promise.all(urlsData.map(d => this.connector.getLink(d.url))).then(links => {
-      urlsData.forEach((d, i) => (d.url = links[i]) && (d.cdnLink = true));
-      return obj;
-    }).catch(() => {
-      logger.warn(`Failed to get movie ${obj.params[0]}`);
-      obj.params[0].message += ` (${this.texts.issuesGettingMovie})`;
-    });
+    return Promise.all(
+      urlsData.map(d => {
+        return this.connector.getLink(d.url)
+          .catch(e => {
+            logger.warn(`Failed to get movie ${obj.params[0]} ${d.text}`);
+            issue = true;
+          });
+      }))
+      .then(links => {
+        urlsData.forEach((d, i) => (d.url = links[i]) && (d.cdnLink = true));
+        obj.menu = obj.menu.filter((m, i) => {
+          if (m._remove) return false;
+
+          if ('url' in m) {
+            if (typeof m.url === 'undefined') {
+              obj.menu[i + 1]._remove = true;
+              return false;
+            }
+          }
+
+          return true;
+        });
+        issue && (obj.params[0] += `\n(${this.texts.issuesGettingMovie})`);
+        return obj;
+      });
   }
 
   getTitle($) {
@@ -410,14 +438,13 @@ class SearchController extends Telegram.TelegramBaseController {
     // handling back button when no episode passed
     if (!ep) {
       tree.pop();
-       return this.runInlineMenu($, menuOpts) && false;
+      this.runInlineMenu($, menuOpts).then(() => $.api.answerCallbackQuery(cb.id));
+      return false;
     }
 
     let menu = menuOpts.menu.filter(m => m.id === ep);
 
     if (menu.length) {
-      $.api.answerCallbackQuery(cb.id);
-
       menu = menu[0];
 
       if (tree.last.type === 'episode') {
@@ -426,7 +453,7 @@ class SearchController extends Telegram.TelegramBaseController {
         tree.push(menu.parsedObj);
       }
 
-      this.getWatch($, menu);
+      this.getWatch($, menu).then(() => $.api.answerCallbackQuery(cb.id));
     } else {
       $.api.answerCallbackQuery(cb.id, { text: this.texts.cantGoFurther });
     }

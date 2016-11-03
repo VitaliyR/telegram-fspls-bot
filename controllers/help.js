@@ -18,7 +18,9 @@ class HelpController extends Telegram.TelegramBaseController {
       '/help - show this message\n' +
       '/h - show history of your watched movies and/or episodes\n' +
       '/news - show latest bot news\n\n' +
-      'And you can, of course, just *type* movie name for *search*';
+      'And you can, of course, just *type* movie name for *search*\n\n' +
+      '*Support and Feedback:*\n' +
+      'Contact @salen for any questions';
   }
 
   getGroupMessage() {

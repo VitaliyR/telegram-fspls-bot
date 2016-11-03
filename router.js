@@ -40,7 +40,7 @@ module.exports = function(tg, config) {
 
   const searchController = new Controllers.Search(config, api);
   const historyController = new Controllers.History(config);
-  historyController.searchDelegate = searchController.roll.bind(searchController);
+  historyController.delegate = searchController;
 
   /**
    * Routes

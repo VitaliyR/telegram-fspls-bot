@@ -15,7 +15,7 @@ class HistoryController extends Telegram.TelegramBaseController {
    * Sets searchDelegate
    * @param {SearchController.<Function>} delegate
    */
-  set searchDelegate(delegate) {
+  set delegate(delegate) {
     this._delegate = delegate;
   }
 
@@ -49,8 +49,8 @@ class HistoryController extends Telegram.TelegramBaseController {
         menuOpts.menu.push({
           text: `${movie.title} ${tree.title}`,
           callback: (cb, msg) => {
-            $.api.answerCallbackQuery(cb.id);
-            this._delegate($, movie, msg);
+            this._delegate.localization = this._localization;
+            this._delegate.roll($, movie, msg).then(() => $.api.answerCallbackQuery(cb.id));
           }
         });
       });
