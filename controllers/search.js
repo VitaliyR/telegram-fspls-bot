@@ -19,6 +19,14 @@ class SearchController extends Telegram.TelegramBaseController {
     this.connector = api;
   }
 
+  notifyError($, e) {
+    if (typeof e === 'string') {
+      $.sendMessage(`_${e}_`, { parse_mode: 'Markdown' });
+    } else {
+      logger.error(e);
+    }
+  }
+
   /**
    * Clears user session
    * @param {Telegram.Scope} $
@@ -61,13 +69,7 @@ class SearchController extends Telegram.TelegramBaseController {
       }));
 
       this.runInlineMenu($, menuOpts);
-    }).catch(e => {
-      if (typeof e === 'string') {
-        $.sendMessage(`_${e}_`, { parse_mode: 'Markdown' });
-      } else {
-        logger.error(e);
-      }
-    });
+    }).catch(this.notifyError.bind(this, $));
   }
 
   /**
@@ -93,7 +95,8 @@ class SearchController extends Telegram.TelegramBaseController {
         folderNode && folderNode.selectedEpisode && (parsedObj.selectedEpisode = folderNode.selectedEpisode);
         return parsedObj;
       })
-      .then(parsedObj => this.selectFolder($, parsedObj));
+      .then(parsedObj => this.selectFolder($, parsedObj))
+      .catch(this.notifyError.bind(this, $));
   }
 
   getData($, movie, folder) {

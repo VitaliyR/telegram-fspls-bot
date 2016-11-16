@@ -3,7 +3,8 @@ module.exports = {
   perPage: 10,
   api: {
     base: 'http://fs.to',
-    search: '/search.aspx'
+    search: '/search.aspx',
+    timeout: 6000
   },
   db: {
     url: 'mongodb://localhost/',

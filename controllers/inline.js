@@ -2,6 +2,7 @@ const Telegram = require('telegram-node-bot');
 const TModel = Telegram.Models;
 
 const Parser = require('../lib/parser');
+const logger = require('../lib/logger')();
 
 class InlineController extends Telegram.TelegramBaseInlineQueryController {
 
@@ -55,6 +56,15 @@ class InlineController extends Telegram.TelegramBaseInlineQueryController {
         });
 
         $.answer(results);
+      }).catch(e => {
+        if (typeof e === 'string') {
+          $.sendMessage(`_${e}_`, { parse_mode: 'Markdown' });
+        } else {
+          logger.error(e);
+        }
+        $.answer([], {
+          cache_time: 0
+        });
       });
     });
   }

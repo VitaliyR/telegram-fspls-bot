@@ -34,6 +34,7 @@ const checkRoute = (command) => {
 module.exports = function(tg, config) {
   Utils.setTg(tg);
   Persistent.connect(config);
+  api.texts = tg._telegramDataSource._localization._localizations[0].phrases.errors;
 
   tg.addScopeExtension(Persistent);
   tg.addScopeExtension(Utils);
