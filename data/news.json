@@ -1,5 +1,9 @@
 [
   {
+    "text": "1.1.4 (17.11.2016)",
+    "desc": "Fix parsing search results while service is unavailable."
+  },
+  {
     "text": "1.1.3 (16.11.2016)",
     "desc": "Send notification in case if service is unavailable."
   },
