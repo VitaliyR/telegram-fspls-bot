@@ -1,5 +1,5 @@
 # Telegram FSpls_bot
-A bot for telegram messenger for getting links for watch FS.to movies.
+A bot for telegram messenger for getting links for watch FS.life (ex FS.to) movies.
 
 Give it a try in [Telegram (@fspls_bot)](https://telegram.me/fspls_bot).
 

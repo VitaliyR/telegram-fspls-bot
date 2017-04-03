@@ -1,5 +1,9 @@
 [
   {
+    "text": "1.1.5 (03.04.2017)",
+    "desc": "Switched to new domain. Fix issues with getting movie information."
+  },
+  {
     "text": "1.1.4 (17.11.2016)",
     "desc": "Fix parsing search results while service is unavailable."
   },

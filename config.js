@@ -2,7 +2,7 @@ module.exports = {
   bot_name: '@fspls_bot',
   perPage: 10,
   api: {
-    base: 'http://fs.to',
+    base: 'http://fs.life',
     search: '/search.aspx',
     timeout: 6000
   },

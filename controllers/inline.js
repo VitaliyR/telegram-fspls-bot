@@ -34,7 +34,7 @@ class InlineController extends Telegram.TelegramBaseInlineQueryController {
         let results = [];
 
         res.forEach(movie => {
-          movie.link = 'http://fs.to' + movie.link;
+          movie.link = this.config.api.base + movie.link;
           movie.poster = 'http:' + movie.poster;
 
           let movieId = Parser.getMovieId(movie);

@@ -40,7 +40,7 @@ class SearchController extends Telegram.TelegramBaseController {
   }
 
   /**
-   * Searches FS.to
+   * Searches FS
    * @param $ ctx
    */
   handle($) {
